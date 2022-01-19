@@ -1,8 +1,4 @@
-/**
- * Export
- *
- * @author Adama dodo cisse <adama.dodo.cisse@gmail.com>
- */
+
 class Export {
     /**
      * Download url

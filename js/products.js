@@ -1,14 +1,15 @@
-/**
- * Product manager
- *
- * @author Adama dodo cisse <adama.dodo.cisse@gmail.com>
- */
-document.addEventListener('DOMContentLoaded', function () {
 
-    const urlSearchParams = new URLSearchParams(location.search)
-    const ENDPOINT = urlSearchParams.get('url')?.trim('/');
-    const collection = urlSearchParams.get('collection')?.trim('/')
+
+document.addEventListener('DOMContentLoaded', function () {
     const FILENAME = ENDPOINT?.replaceAll(/[^\w]/g, '_') + '.csv';
+    let collection = urlSearchParams.get('collection')?.trim('/')
+
+    if (PLATFORM == platform_fix.shopbase) {
+        collection = urlSearchParams.get('collection_ids')?.trim('/');
+    } else if (PLATFORM == platform_fix.shopify) {
+        collection = urlSearchParams.get('collection')?.trim('/')
+    } else if (PLATFORM == platform_fix.wordpress) {
+    }
 
     new Vue({
         el: '#app',
@@ -18,6 +19,7 @@ document.addEventListener('DOMContentLoaded', function () {
             page: 1,
             search: '',
             url: ENDPOINT,
+            platform: PLATFORM,
             loading: false,
             user: {},
             collection: collection,
@@ -50,30 +52,54 @@ document.addEventListener('DOMContentLoaded', function () {
              */
             async loadProducts() {
                 let page = 1;
-                let next = true, url;
-                if (collection && collection.length > 0) {
-                    url = ENDPOINT + '/collections/' + collection + '/products.json?limit=250&page=';
-                } else {
-                    url = ENDPOINT + '/products.json?limit=250&page=';
+                let next = true, url = "";
+                
+                if (PLATFORM == platform_fix.shopbase) {
+                    if (collection && collection.length > 0) {
+                        url = ENDPOINT + '/api/catalog/next/products.json?sort_field=created&collection_ids='+ collection +'&limit=250&page=';
+                    } else {
+                        url = ENDPOINT + '/api/catalog/next/products.json?sort_field=created&limit=250&page=';
+                    }
+                } else if (PLATFORM == platform_fix.shopify) {
+                    if (collection && collection.length > 0) {
+                        url = ENDPOINT + '/collections/' + collection + '/products.json?limit=250&page=';
+                    } else {
+                        url = ENDPOINT + '/products.json?limit=250&page=';
+                    }
+                } else if (PLATFORM == platform_fix.wordpress) {
                 }
 
                 this.products = [];
-
                 this.loading = true;
 
                 while (next) {
                     next = false;
                     try {
                         let response = await fetch(url + page).then(response => response.json())
-
-                        if (response?.products?.length) {
-                            this.products = [...this.products, ...response.products.map(p => {
-                                p.checked = false
-                                return p
-                            })];
-                            next = true;
-                            page++;
+                        if (PLATFORM == platform_fix.shopbase) {
+                            if (response?.result?.items?.length) {
+                                this.products = [...this.products, ...response.result.items.map(p => {
+                                    p.checked = false;
+                                    p.created_at_show = (new Date(p.created_at*1000)).toLocaleString();
+                                    return p;
+                                })];
+                                next = true;
+                                page++;
+                            }
+                        } else if (PLATFORM == platform_fix.shopify) {
+                            if (response?.products?.length) {
+                                this.products = [...this.products, ...response.products.map(p => {
+                                    p.checked = false;
+                                    p.created_at_show = (new Date(p.created_at)).toLocaleString();
+                                    return p;
+                                })];
+                                next = true;
+                                page++;
+                            }
+                        } else if (PLATFORM == platform_fix.wordpress) {
                         }
+
+                        
                     } catch (e) {
                     }
                 }
@@ -191,7 +217,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 const values = [];
 
                 for (const product of products) {
-                    Service.productToCsvObject(product, values)
+                    Service.productToCsvObject(product, values, PLATFORM)
                 }
 
                 if (products.length > 0) {

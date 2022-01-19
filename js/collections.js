@@ -1,12 +1,5 @@
-/**
- * Collection manager
- *
- * @author Adama dodo cisse <adama.dodo.cisse@gmail.com>
- */
-document.addEventListener('DOMContentLoaded', function () {
 
-    const urlSearchParams = new URLSearchParams(location.search)
-    const ENDPOINT = urlSearchParams?.get('url')?.trim('/');
+window.addEventListener('DOMContentLoaded', function () {
     const FILENAME = ENDPOINT?.replaceAll(/[^\w]/g, '_') + '.csv';
 
     new Vue({
@@ -20,6 +13,7 @@ document.addEventListener('DOMContentLoaded', function () {
             url: ENDPOINT,
             loading: false,
             user: {},
+            platform: PLATFORM,
             progress: {
                 loading: false,
                 collection: '',
@@ -60,22 +54,44 @@ document.addEventListener('DOMContentLoaded', function () {
             async loadCollections() {
                 let page = 1;
                 let next = true;
-                let url = ENDPOINT + '/collections.json?limit=250&page=';
 
-                while (next) {
-                    next = false;
-                    try {
-                        let response = await fetch(url + page).then(response => response.json())
+                let url = "";
+                if (PLATFORM == platform_fix.shopbase) {
+                    url = ENDPOINT + '/api/catalog/next/collections.json?limit=250&page=';
+                } else if (PLATFORM == platform_fix.shopify) {
+                    url = ENDPOINT + '/collections.json?limit=250&page=';
+                } else if (PLATFORM == platform_fix.wordpress) {
+                }
 
-                        if (response?.collections?.length) {
-                            this.collections = [...this.collections, ...response.collections.map(c => {
-                                c.checked = false;
-                                return c
-                            })]
-                            next = true;
-                            page++;
+                if (url) {
+                    while (next) {
+                        next = false;
+                        try {
+                            let response = await fetch(url + page).then(response => response.json())
+
+                            if (PLATFORM == platform_fix.shopbase) {
+                                if (response?.result?.items?.length) {
+                                    this.collections = [...this.collections, ...response.result.items.map(c => {
+                                        c.checked = false;
+                                        return c
+                                    })]
+                                    next = true;
+                                    page++;
+                                }
+                            } else if (PLATFORM == platform_fix.shopify) {
+                                if (response?.collections?.length) {
+                                    this.collections = [...this.collections, ...response.collections.map(c => {
+                                        c.checked = false;
+                                        return c
+                                    })]
+                                    next = true;
+                                    page++;
+                                }
+                            } else if (PLATFORM == platform_fix.wordpress) {
+                            }
+
+                        } catch (e) {
                         }
-                    } catch (e) {
                     }
                 }
             },
@@ -178,7 +194,6 @@ document.addEventListener('DOMContentLoaded', function () {
                     this.progress.progressCollections += 1
                     this.progress.totalProducts = products.length
                 }
-
                 await this.downloadProducts(products)
 
                 this.loading = false;
@@ -206,22 +221,44 @@ document.addEventListener('DOMContentLoaded', function () {
 
                 let page = 1;
                 let next = true;
-                let url = ENDPOINT + '/collections/' + collection.handle + '/products.json?limit=250&page=';
                 let products = [];
+
+                let url = "";
+                if (PLATFORM == platform_fix.shopbase) {
+                    url = ENDPOINT + '/api/catalog/next/products.json?sort_field=created&collection_ids=' + collection.id + '&limit=250&page=';
+                } else if (PLATFORM == platform_fix.shopify) {
+                    url = ENDPOINT + '/collections/' + collection.handle + '/products.json?limit=250&page=';
+                } else if (PLATFORM == platform_fix.wordpress) {
+                }
+
 
                 while (next) {
                     next = false;
                     try {
                         let response = await fetch(url + page).then(response => response.json())
 
-                        if (response?.products?.length) {
-                            products = [...products, ...response.products.map(p => {
-                                p.collection = collection.handle
-                                return p;
-                            })]
-                            next = true;
-                            page++;
+                        if (PLATFORM == platform_fix.shopbase) {
+                            if (response?.result?.items?.length) {
+                                products = [...products, ...response.result.items.map(p => {
+                                    p.collection = collection.handle
+                                    return p;
+                                })]
+                                next = true;
+                                page++;
+                            }
+                        } else if (PLATFORM == platform_fix.shopify) {
+                            if (response?.products?.length) {
+                                products = [...products, ...response.products.map(p => {
+                                    p.collection = collection.handle
+                                    return p;
+                                })]
+                                next = true;
+                                page++;
+                            }
+                        } else if (PLATFORM == platform_fix.wordpress) {
                         }
+
+
                     } catch (e) {
                     }
                 }
@@ -240,15 +277,15 @@ document.addEventListener('DOMContentLoaded', function () {
                 const values = [];
 
                 for (const product of products) {
-                    Service.productToCsvObject(product, values)
+                    Service.productToCsvObject(product, values, PLATFORM)
                 }
 
                 if (products.length > 0) {
                     const content = (new CSV()).convert(values);
                     (new Export()).csv(content, FILENAME);
-                    M.toast({html: '✅ Export success !!!'});
+                    M.toast({ html: '✅ Export success !!!' });
                 } else {
-                    M.toast({html: '❌ Export fail !!!'});
+                    M.toast({ html: '❌ Export fail !!!' });
                 }
             },
             /**
@@ -258,7 +295,7 @@ document.addEventListener('DOMContentLoaded', function () {
              */
             showProductPage(collection) {
                 window.open(
-                    location.origin + "/products.html?url=" + ENDPOINT + '&collection=' + collection.handle,
+                    "products.html?url=" + ENDPOINT + '&platform=' + PLATFORM + '&collection=' + collection.handle,
                     '_blank'
                 );
             },

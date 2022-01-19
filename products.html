@@ -24,6 +24,7 @@
     <div>
         <nav-component :title="'Products - ' + url"
                        :user="user"
+                       :platform="platform"
                        :url="url"
         ></nav-component>
         <br>
@@ -86,7 +87,7 @@
                                     <tr>
                                         <th style="width: 40px">#</th>
                                         <th>Image</th>
-                                        <th>Create At</th>
+                                        <th>Created At</th>
                                         <th>Title</th>
                                         <th>Type</th>
                                         <th>Action</th>
@@ -107,7 +108,7 @@
                                         </td>
                                         <td><img :src="product.images[0]?.src" :alt="product.title" width="80" height="80">
                                         </td>
-                                        <td>{{(new Date(product.created_at)).toLocaleString()}}</td>
+                                        <td>{{product.created_at_show}}</td>
                                         <td>{{product.title}}</td>
                                         <td>
                                             {{product?.product_type}}

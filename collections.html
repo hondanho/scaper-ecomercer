@@ -6,24 +6,23 @@
           content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
     <link rel="icon" href="img/logo.png">
-    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons" >
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
 
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-    <title>Export Product</title>
+    <title>Collection</title>
 
     <link type="text/css" rel="stylesheet" href="css/materialize.min.css" media="screen,projection"/>
     <link type="text/css" rel="stylesheet" href="css/dataTables.material.min.css" media="screen,projection"/>
     <link type="text/css" rel="stylesheet" href="css/main.css">
 </head>
 <body>
-
 <div id="app">
-    <overlay-component v-bind:loading="loading"></overlay-component>
-
+    <overlay-component :loading="loading"></overlay-component>
     <div>
-        <nav-component :title="'Products - ' + url"
+        <nav-component :title="'Collections - ' + url"
                        :user="user"
+                       :platform="platform"
                        :url="url"
         ></nav-component>
         <br>
@@ -35,10 +34,15 @@
                             <div class="nav-wrapper">
                                 <form autocomplete="off">
                                     <div class="input-field">
-                                        <input id="search" type="search" v-model="search" placeholder="SEARCH PRODUCT"
-                                               class="center-align">
-                                        <label class="label-icon" for="search"><i
-                                                class="material-icons">search</i></label>
+                                        <input id="search"
+                                               type="search"
+                                               placeholder="SEARCH COLLECTION"
+                                               class="center-align"
+                                               v-model="search"
+                                        >
+                                        <label class="label-icon" for="search">
+                                            <i class="material-icons">search</i>
+                                        </label>
                                         <i class="material-icons">close</i>
                                     </div>
                                 </form>
@@ -48,95 +52,105 @@
                 </div>
 
                 <div class="row">
-                    <div class="col s4">
-                        <strong style="font-size: 24px">TOTAL PRODUCTS : {{ products.length }}</strong>
+                    <div class="col s6">
+                        <strong style="font-size: 24px">TOTAL COLLECTIONS : {{ collections.length }}</strong>
+
+                        <div v-if="progress.loading">
+                            <p>Please wait, the products are being exported ...</p>
+                            <p>Treatment of the collection : {{progress.collection}}</p>
+                            <p>{{progress.progressCollections}} / {{progress.totalCollections}}</p>
+                            <p>{{progress.totalProducts}} product(s) loaded</p>
+                            <div class="progress">
+                                <div class="determinate"
+                                     :style="{width: ((progress.progressCollections / Math.max(1, progress.totalCollections)) * 100) + '%' }"></div>
+                            </div>
+                        </div>
                     </div>
-                    <div class="col s8 right-align">
+                    <div class="col s6 right-align">
                         <button id="export"
                                 type="button"
                                 name="export"
-                                class="btn waves-effect waves-light light-blue darken-4  btn-medium"
+                                class="btn  waves-effect waves-light btn-medium  light-blue darken-4"
                                 :disabled="loading"
                                 :class="{loading: 'disabled'}"
-                                v-on:click.prevent="processExportProducts(selectedOrAllProducts, true)">
-                            {{ exportButtonTitle }}
+                                v-on:click.prevent="processExportCollections(selectedOrAllCollections)">
+                           {{ exportButtonTitle }}
                             <i class="material-icons right">cloud_download</i>
                         </button>
                         <button id="reset"
                                 type="button"
                                 name="reset"
-                                class="btn waves-effect waves-light light-blue darken-4 btn-medium"
+                                class="btn waves-effect waves-light btn-medium  light-blue darken-4"
                                 :disabled="loading"
                                 :class="{loading: 'disabled'}"
                                 v-on:click.prevent="reset()">
-                            CLEAN ALL
-                            <i class="material-icons right">clear_all</i>
+                             CLEAN ALL<i class="material-icons right">clear_all</i>
                         </button>
                     </div>
                 </div>
-
-                <br>
 
                 <div class="row">
                     <div class="col s12">
                         <div class="table-container card">
                             <div class="card-content">
-                                <table class="responsive-table highlight" style="table-layout: fixed">
+                                <table class="responsive-table highlight" style="table-layout: fixed" >
                                     <thead>
                                     <tr>
                                         <th style="width: 40px">#</th>
-                                        <th>Image</th>
-                                        <th>Create At</th>
                                         <th>Title</th>
-                                        <th>Type</th>
+                                        <th>Description</th>
+                                        <th style="width: 40px">Total</th>
                                         <th>Action</th>
                                     </tr>
                                     </thead>
                                     <tbody>
-                                    <tr v-for="product in pagination()" v-bind:key="product.handle">
+                                    <tr v-for="collection in pagination()" v-bind:key="collection.handle">
                                         <td>
                                             <label>
                                                 <input
                                                         type="checkbox"
-                                                        class="filled-in product-item"
-                                                        name="products[]"
-                                                        v-model="product.checked"
+                                                        class="filled-in collection-item"
+                                                        name="collections[]"
+                                                        v-model="collection.checked"
                                                 >
                                                 <span>&nbsp;</span>
                                             </label>
                                         </td>
-                                        <td><img :src="product.images[0]?.src" :alt="product.title" width="80" height="80">
-                                        </td>
-                                        <td>{{(new Date(product.created_at)).toLocaleString()}}</td>
-                                        <td>{{product.title}}</td>
+                                        <td>{{collection.title}}</td>
+                                        <td v-html="collection?.description"></td>
                                         <td>
-                                            {{product?.product_type}}
-                                            <product-modal :product="product" :modal-id="'product-' + product.handle"></product-modal>
+                                        <span class="news badges" data-badge-caption="product(s)">
+                                            {{collection.products_count}}
+                                        </span>
                                         </td>
 
-                                        <td class="right-align">
-
-                                            <a :href="url + '/products/' + product.handle"
+                                        <td>
+                                            <a :href="url + '/collections/' + collection.handle"
                                                title="URL SHOPIFY"
                                                data-position="top"
                                                data-tooltip="URL SHOPIFY"
                                                class="btn light-blue darken-4 tooltipped" target="_blank">
                                                 <i class="material-icons">link</i>
                                             </a>
-
                                             <button type="button"
-                                                    title="EXPORT PRODUCT"
+                                                    title="EXPORT PRODUCTS"
                                                     data-position="top"
                                                     data-tooltip="EXPORT PRODUCTS"
                                                     class="btn light-blue darken-4 tooltipped"
-                                                    v-on:click.prevent="processExportProduct(product)">
+                                                    v-on:click.prevent="processExportCollection(collection)">
                                                 <i class="material-icons">cloud_download</i>
                                             </button>
 
-                                            <a class="btn modal-trigger light-blue darken-4"
-                                               :href="'#' + 'product-' + product.handle">
+                                            <button type="button"
+                                                    title="SHOW PRODUCTS"
+                                                    data-position="top"
+                                                    data-tooltip="SHOW PRODUCTS"
+                                                    class="btn light-blue darken-4 tooltipped"
+                                                    :disabled="collection.products_count == 0"
+                                                    v-on:click.prevent="showProductPage(collection)">
                                                 <i class="material-icons">remove_red_eye</i>
-                                            </a>
+                                            </button>
+
                                         </td>
                                     </tr>
                                     <tr v-if="!pagination().length">
@@ -144,16 +158,27 @@
                                     </tr>
                                     </tbody>
                                 </table>
+
                             </div>
                         </div>
+
                         <div class="center-align" v-if="pageCount() >= 1">
                             <ul class="pagination">
-                                <li class="disabled"><a v-on:click.prevent="previousPage()"><i class="material-icons">chevron_left</i></a>
+                                <li class="disabled">
+                                    <a v-on:click.prevent="previousPage()">
+                                        <i class="material-icons">chevron_left</i>
+                                    </a>
                                 </li>
-                                <li class="waves-effect" :class="{'active' : isActivePage(p)}" v-for="p in pageRange()">
+                                <li class="waves-effect"
+                                    :class="{'active' : isActivePage(p)}"
+                                    v-for="p in pageRange()">
                                     <a v-on:click.prevent="setPage(p)">{{ p }}</a>
                                 </li>
-                                <li class="waves-effect"><a v-on:click.prevent="nextPage()"><i class="material-icons">chevron_right</i></a></li>
+                                <li class="waves-effect">
+                                    <a v-on:click.prevent="nextPage()">
+                                        <i class="material-icons">chevron_right</i>
+                                    </a>
+                                </li>
                             </ul>
                         </div>
                     </div>
@@ -170,8 +195,6 @@
 <script type="text/javascript" src="js/service.js"></script>
 <script type="text/javascript" src="js/component/nav-component.js"></script>
 <script type="text/javascript" src="js/component/overlay-component.js"></script>
-<script type="text/javascript" src="js/component/product-modal-component.js"></script>
-<script type="text/javascript" src="js/products.js"></script>
-
+<script type="text/javascript" src="js/collections.js"></script>
 </body>
 </html>
